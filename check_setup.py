@@ -29,6 +29,8 @@ def check_dependencies():
 
     required_packages = [
         'streamlit',
+        'streamlit_drawable_canvas',
+        'cozepy',
         'dashscope',
         'requests',
         'dotenv',
@@ -109,7 +111,6 @@ def check_directories():
         'src/utils',
         'data',
         'data/artworks',
-        '.streamlit'
     ]
 
     all_ok = True
@@ -140,7 +141,6 @@ def check_main_files():
         'src/services/coze_service.py',
         'src/services/video_service.py',
         'requirements.txt',
-        '.env.example'
     ]
 
     all_ok = True

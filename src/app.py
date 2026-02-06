@@ -17,7 +17,7 @@ init_session_state()
 
 # 获取背景图片路径并转换为base64
 script_dir = os.path.dirname(__file__)
-bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "图片", "背景.png"))
+bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "assets", "背景.png"))
 
 def get_base64_image(image_path):
     """将图片转换为base64编码"""
@@ -179,8 +179,8 @@ with st.sidebar:
 # 主页面内容
 # 获取角色图片路径
 script_dir = os.path.dirname(__file__)
-img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "图片", "球球角色透明背景.png"))
-title_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "图片", "绘梦精灵.png"))
+img_path = os.path.normpath(os.path.join(script_dir, "..", "assets", "球球角色透明背景.png"))
+title_img_path = os.path.normpath(os.path.join(script_dir, "..", "assets", "绘梦精灵.png"))
 
 # 读取角色图片并转为base64
 char_base64 = get_base64_image(img_path) if os.path.exists(img_path) else None
@@ -226,7 +226,7 @@ else:
 col1, col2 = st.columns(2)
 
 with col1:
-    card1_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "图片", "背景1.png"))
+    card1_img_path = os.path.normpath(os.path.join(script_dir, "..", "assets", "背景1.png"))
     card1_base64 = get_base64_image(card1_img_path)
     if card1_base64:
         st.markdown(f"""
@@ -243,7 +243,7 @@ with col1:
         st.switch_page("pages/2_🎨_智能画板.py")
 
 with col2:
-    card2_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "图片", "背景2.png"))
+    card2_img_path = os.path.normpath(os.path.join(script_dir, "..", "assets", "背景2.png"))
     card2_base64 = get_base64_image(card2_img_path)
     if card2_base64:
         st.markdown(f"""

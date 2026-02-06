@@ -15,7 +15,7 @@ file_handler = FileHandler()
 
 # 添加背景图片
 script_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "图片", "背景01.png"))
+bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "背景01.png"))
 
 def get_base64_image(image_path):
     with open(image_path, "rb") as f:

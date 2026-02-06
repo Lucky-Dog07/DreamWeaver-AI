@@ -17,7 +17,7 @@ st.set_page_config(page_title="首页", page_icon="🎬", layout="wide")
 
 # 构建背景图片路径（用于本页底层背景）
 script_dir = os.path.dirname(__file__)
-bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "..", "图片", "背景01.png"))
+bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "背景01.png"))
 bg_base64 = get_base64_image(bg_img_path) if os.path.exists(bg_img_path) else None
 
 if bg_base64:
@@ -160,22 +160,22 @@ st.markdown(f"""
 
 # 顶部欢迎区
 # 构建角色图片和标题图片路径
-img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "..", "图片", "球球角色透明背景.png"))
-welcome_title_path = os.path.normpath(os.path.join(script_dir, "..", "..", "..", "图片", "欢迎来到绘梦精灵.png"))
+img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "球球角色透明背景.png"))
+welcome_title_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "欢迎来到绘梦精灵.png"))
 welcome_title_base64 = get_base64_image(welcome_title_path) if os.path.exists(welcome_title_path) else None
 
 # 功能卡片 / 装饰图片路径
-canvas_card_path = os.path.normpath(os.path.join(script_dir, "..", "..", "..", "图片", "背景1.png"))
+canvas_card_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "背景1.png"))
 canvas_card_base64 = get_base64_image(canvas_card_path) if os.path.exists(canvas_card_path) else None
-workshop_card_path = os.path.normpath(os.path.join(script_dir, "..", "..", "..", "图片", "背景2.png"))
+workshop_card_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "背景2.png"))
 workshop_card_base64 = get_base64_image(workshop_card_path) if os.path.exists(workshop_card_path) else None
-artist_bg_path = os.path.normpath(os.path.join(script_dir, "..", "..", "..", "图片", "艺术家背景.png"))
+artist_bg_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "艺术家背景.png"))
 artist_bg_base64 = get_base64_image(artist_bg_path) if os.path.exists(artist_bg_path) else None
-zero_bg_path = os.path.normpath(os.path.join(script_dir, "..", "..", "..", "图片", "0门槛背景.png"))
+zero_bg_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "0门槛背景.png"))
 zero_bg_base64 = get_base64_image(zero_bg_path) if os.path.exists(zero_bg_path) else None
-vis_bg_path = os.path.normpath(os.path.join(script_dir, "..", "..", "..", "图片", "视听背景.png"))
+vis_bg_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "视听背景.png"))
 vis_bg_base64 = get_base64_image(vis_bg_path) if os.path.exists(vis_bg_path) else None
-companion_bg_path = os.path.normpath(os.path.join(script_dir, "..", "..", "..", "图片", "陪伴背景.png"))
+companion_bg_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "陪伴背景.png"))
 companion_bg_base64 = get_base64_image(companion_bg_path) if os.path.exists(companion_bg_path) else None
 
 # 使用列布局显示标题和角色图片
