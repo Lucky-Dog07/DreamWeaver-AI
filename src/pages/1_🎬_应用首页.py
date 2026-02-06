@@ -1,6 +1,3 @@
-import os, sys
-_src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
-if _src not in sys.path: sys.path.insert(0, _src)
 import streamlit as st
 from utils.session_manager import init_session_state
 import os
@@ -221,7 +218,10 @@ with col1:
         </div>
         """, unsafe_allow_html=True)
     if st.button("开始绘画", use_container_width=True, key="home_canvas"):
-        st.switch_page("pages/2_Canvas.py")
+        try:
+            st.switch_page("pages/2_🎨_智能画板.py")
+        except Exception:
+            st.info("👈 请从左侧边栏选择「智能画板」进入")
 
 with col2:
     if workshop_card_base64:
@@ -242,7 +242,10 @@ with col2:
         </div>
         """, unsafe_allow_html=True)
     if st.button("开启工坊", use_container_width=True, key="home_workshop"):
-        st.switch_page("pages/3_Workshop.py")
+        try:
+            st.switch_page("pages/3_🧚_加工工厂.py")
+        except Exception:
+            st.info("👈 请从左侧边栏选择「加工工厂」进入")
 
 st.markdown("---")
 
