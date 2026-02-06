@@ -1,8 +1,15 @@
+import os
+import sys
+
+# 确保模块路径正确
+src_dir = os.path.dirname(os.path.abspath(__file__))
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
 import streamlit as st
+import base64
 from utils.session_manager import init_session_state
 from utils.config_loader import ConfigLoader
-import os
-import base64
 
 # 页面配置
 st.set_page_config(
