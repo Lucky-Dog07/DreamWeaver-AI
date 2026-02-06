@@ -1,5 +1,7 @@
 streamlit>=1.30.0
 streamlit-drawable-canvas>=0.9.3
+pyarrow>=14.0.0
+cozepy>=0.20.0
 dashscope>=1.14.0
 requests>=2.31.0
 python-dotenv>=1.0.0

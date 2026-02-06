@@ -1,4 +1,6 @@
 import streamlit as st
+import os
+import base64
 from utils.session_manager import init_session_state, clear_session
 from utils.file_handler import FileHandler
 
@@ -10,6 +12,49 @@ st.set_page_config(
 
 init_session_state()
 file_handler = FileHandler()
+
+# 添加背景图片
+script_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "图片", "背景01.png"))
+
+def get_base64_image(image_path):
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+if os.path.exists(bg_img_path):
+    bg_base64 = get_base64_image(bg_img_path)
+    bg_css = f"""
+    .stApp {{
+        background-image: url("data:image/png;base64,{bg_base64}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    .main .block-container {{
+        background-color: rgba(255, 255, 255, 0.85);
+        border-radius: 16px;
+        padding: 2rem;
+    }}
+    """
+else:
+    bg_css = ""
+
+# 按钮蓝色样式
+button_css = """
+    .stButton > button {
+        background-color: #4A90E2;
+        color: white;
+        border: none;
+        border-radius: 8px;
+    }
+    .stButton > button:hover {
+        background-color: #357ABD;
+        color: white;
+    }
+"""
+
+st.markdown(f"<style>{bg_css}{button_css}</style>", unsafe_allow_html=True)
 
 st.markdown("# ⚙️ 设置中心")
 

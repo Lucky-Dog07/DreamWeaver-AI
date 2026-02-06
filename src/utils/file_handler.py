@@ -211,6 +211,25 @@ class FileHandler:
             print(f"获取作品列表失败: {str(e)}")
             return []
 
+    def get_all_artworks(self) -> list:
+        """获取所有用户的所有作品"""
+        try:
+            all_images = []
+            # 遍历所有用户目录
+            for user_dir in self.artworks_dir.iterdir():
+                if user_dir.is_dir():
+                    original_dir = user_dir / "original"
+                    if original_dir.exists():
+                        all_images.extend(original_dir.glob("*.png"))
+                    # 也检查 uploaded 目录
+                    uploaded_dir = user_dir / "uploaded"
+                    if uploaded_dir.exists():
+                        all_images.extend(uploaded_dir.glob("*.png"))
+            return sorted(all_images, key=lambda x: x.stat().st_mtime, reverse=True)
+        except Exception as e:
+            print(f"获取所有作品失败: {str(e)}")
+            return []
+
     def delete_artwork(self, user_id: str, artwork_id: str) -> bool:
         """删除作品"""
         try:

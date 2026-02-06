@@ -26,6 +26,56 @@ st.set_page_config(
 
 init_session_state()
 
+# 添加背景图片
+import os
+script_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "图片", "背景01.png"))
+
+def get_base64_image(image_path):
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+if os.path.exists(bg_img_path):
+    bg_base64 = get_base64_image(bg_img_path)
+    bg_css = f"""
+    .stApp {{
+        background-image: url("data:image/png;base64,{bg_base64}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    .main .block-container {{
+        background-color: rgba(255, 255, 255, 0.85);
+        border-radius: 16px;
+        padding: 2rem;
+    }}
+    """
+else:
+    bg_css = ""
+
+# 按钮蓝色样式
+button_css = """
+    .stButton > button {
+        background-color: #4A90E2;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+    }
+    .stButton > button:hover {
+        background-color: #357ABD;
+        color: white;
+    }
+    .stButton > button:active {
+        background-color: #2E6BA6;
+        color: white;
+    }
+"""
+
+st.markdown(f"<style>{bg_css}{button_css}</style>", unsafe_allow_html=True)
+
 # 初始化服务
 @st.cache_resource
 def get_services():
@@ -38,7 +88,7 @@ def get_services():
 services = get_services()
 file_handler = FileHandler()
 
-st.markdown("# 🎨 智能画板")
+st.markdown("# 智能画板")
 st.markdown("*在画板上自由绘画，小精灵球球会实时陪伴与反馈*")
 
 # 初始化触发计数器
@@ -47,7 +97,7 @@ if 'last_trigger_count' not in st.session_state:
 
 # 侧边栏设置
 with st.sidebar:
-    st.markdown("## 🎨 画笔设置")
+    st.markdown("## 画笔设置")
 
     # 笔刷设置
     stroke_color = st.color_picker(
@@ -66,7 +116,7 @@ with st.sidebar:
     )
     st.session_state.drawing_data['stroke_width'] = stroke_width
 
-    st.markdown("### 🖼️ 背景设置")
+    st.markdown("### 背景设置")
     bg_color = st.color_picker(
         "背景颜色",
         value=st.session_state.drawing_data.get('background_color', '#FFFFFF'),
@@ -75,13 +125,13 @@ with st.sidebar:
     st.session_state.drawing_data['background_color'] = bg_color
 
     st.divider()
-    st.markdown("### 🛠️ 工具")
+    st.markdown("### 工具")
     st.info("💡 撤销/重做/清空功能已集成在画板左侧工具栏中")
 
     st.divider()
 
     # 统计信息
-    st.markdown("### 📊 统计")
+    st.markdown("### 统计")
     current_strokes = 0
     if 'canvas_result' in st.session_state and st.session_state.canvas_result and st.session_state.canvas_result.json_data:
          if "objects" in st.session_state.canvas_result.json_data:
@@ -101,20 +151,32 @@ st.markdown("## 画布区域")
 canvas_width = 800
 canvas_height = 600
 
-# 使用 streamlit-drawable-canvas
-canvas_result = st_canvas(
-    fill_color="rgba(255, 165, 0, 0.3)",  # 填充颜色（如果需要）
-    stroke_width=stroke_width,
-    stroke_color=stroke_color,
-    background_color=bg_color,
-    background_image=None,
-    update_streamlit=True,
-    height=canvas_height,
-    width=canvas_width,
-    drawing_mode="freedraw",
-    key="canvas",
-    display_toolbar=True,
-)
+# 使用两列布局：左边画板，右边小精灵
+canvas_col, spirit_col = st.columns([1, 1])
+
+with canvas_col:
+    # 使用 streamlit-drawable-canvas
+    canvas_result = st_canvas(
+        fill_color="rgba(255, 165, 0, 0.3)",  # 填充颜色（如果需要）
+        stroke_width=stroke_width,
+        stroke_color=stroke_color,
+        background_color=bg_color,
+        background_image=None,
+        update_streamlit=True,
+        height=canvas_height,
+        width=canvas_width,
+        drawing_mode="freedraw",
+        key="canvas",
+        display_toolbar=True,
+    )
+
+with spirit_col:
+    # 显示小精灵图片
+    spirit_img_path = os.path.normpath(os.path.join(script_dir, "..", "图片", "小精灵3.png"))
+    if os.path.exists(spirit_img_path):
+        st.image(spirit_img_path, use_container_width=True)
+    else:
+        st.info("小精灵球球在这里陪你画画~")
 
 # 实时处理逻辑
 if canvas_result.json_data is not None:
@@ -128,7 +190,7 @@ if canvas_result.json_data is not None:
     if current_count > 0 and current_count >= st.session_state.last_trigger_count + 8:
         st.session_state.last_trigger_count = current_count
         
-        with st.spinner("🧚 球球正在看你的画..."):
+        with st.spinner("球球正在看你的画..."):
             try:
                 # 获取图片数据
                 if canvas_result.image_data is not None:
@@ -157,7 +219,7 @@ if canvas_result.json_data is not None:
                     if voice_audio:
                         st.audio(voice_audio, format='audio/wav', autoplay=True)
                     
-                    st.toast(f"🧚 球球说：{feedback}")
+                    st.toast(f"球球说：{feedback}")
                     
             except Exception as e:
                 st.error(f"互动出错: {str(e)}")
@@ -175,27 +237,60 @@ st.divider()
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("📸 截图预览", use_container_width=True):
+    if st.button("截图预览", use_container_width=True):
         if canvas_result.image_data is not None:
              st.image(canvas_result.image_data, caption="当前画布预览")
 
 with col2:
-    if st.button("🎵 生成音乐", use_container_width=True):
+    if st.button("生成音乐", use_container_width=True):
         if not canvas_result.json_data or not canvas_result.json_data["objects"]:
             st.error("请先在画板上绘画！")
         else:
             st.session_state.generate_music = True
 
 with col3:
-    if st.button("✅ 完成作品", use_container_width=True):
+    if st.button("完成作品", use_container_width=True):
         if not canvas_result.json_data or not canvas_result.json_data["objects"]:
             st.error("请先在画板上绘画！")
         else:
             st.session_state.finish_artwork = True
 
+# 处理生成音乐
+if st.session_state.get('generate_music'):
+    with st.spinner("🎵 正在为你的画生成音乐..."):
+        try:
+            if canvas_result.image_data is not None:
+                # 获取图片数据
+                img_data = canvas_result.image_data.astype(np.uint8)
+                img = Image.fromarray(img_data)
+                
+                img_bytes = io.BytesIO()
+                img.save(img_bytes, format='PNG')
+                image_data = img_bytes.getvalue()
+                
+                # 上传到Coze
+                file_id = services['coze'].upload_image_to_coze(image_data)
+                
+                if file_id:
+                    result = services['coze'].generate_music_from_image(file_id)
+                    if result.get('status') == 'success':
+                        music_url = result.get('music_url')
+                        st.success("🎵 音乐生成成功！")
+                        if music_url:
+                            st.audio(music_url)
+                    else:
+                        st.error(f"音乐生成失败: {result.get('error')}")
+                else:
+                    st.error("图片上传失败")
+            else:
+                st.error("请先在画板上绘画！")
+        except Exception as e:
+            st.error(f"生成音乐出错: {str(e)}")
+        st.session_state.generate_music = False
+
 # 处理完成作品
 if st.session_state.get('finish_artwork'):
-    with st.spinner("🤖 正在进行深度分析..."):
+    with st.spinner("正在进行深度分析..."):
         try:
             if canvas_result.image_data is not None:
                 # 获取图片
@@ -215,7 +310,7 @@ if st.session_state.get('finish_artwork'):
                 )
                 
                 # 1. 使用 ImageProcessor 进行视觉分析 (用户要求)
-                st.write("🔍 正在进行视觉计算...")
+                st.write("正在进行视觉计算...")
                 dominant_colors = ImageProcessor.extract_dominant_colors(image_data)
                 balance_score = ImageProcessor.calculate_balance_score(image_data)
                 focus_point = ImageProcessor.detect_focus_point(image_data)
@@ -278,14 +373,14 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
     artwork = st.session_state.current_artwork
 
     st.divider()
-    st.markdown("## 📊 AI分析结果")
+    st.markdown("## AI分析结果")
 
     # 显示作品图片
     if artwork.image_path:
-        st.image(artwork.image_path, caption="你的作品", use_column_width=True)
+        st.image(artwork.image_path, caption="你的作品", use_container_width=True)
 
     # 显示小精灵反馈
-    st.markdown("### 🧚 小精灵的话")
+    st.markdown("### 小精灵的话")
     st.info(artwork.voice_feedback)
 
     # 显示语音
@@ -298,7 +393,7 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
             pass
 
     # 显示分析详情
-    with st.expander("📈 详细分析", expanded=True):
+    with st.expander("详细分析", expanded=True):
         col1, col2 = st.columns(2)
 
         with col1:
@@ -327,20 +422,20 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("🎵 生成音乐", use_container_width=True, key="btn_music_analysis"):
+        if st.button("生成音乐", use_container_width=True, key="btn_music_analysis"):
             st.session_state.generate_music_for_artwork = True
 
     with col2:
-        if st.button("🎬 生成视频", use_container_width=True):
+        if st.button("生成视频", use_container_width=True):
             st.session_state.generate_video = True
 
     with col3:
-        if st.button("💾 保存作品", use_container_width=True):
+        if st.button("保存作品", use_container_width=True):
             st.session_state.save_artwork = True
 
     # 处理生成音乐
     if st.session_state.get('generate_music_for_artwork'):
-        with st.spinner("🎵 正在为你的画生成音乐..."):
+        with st.spinner("正在为你的画生成音乐..."):
             try:
                 # 上传到Coze
                 if artwork.image_path:
@@ -372,7 +467,7 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
                 st.session_state.user_id,
                 f"{artwork.artwork_id}.json"
             )
-            st.success("✅ 作品已保存！")
+            st.success("作品已保存！")
             st.session_state.save_artwork = False
         except Exception as e:
             st.error(f"保存失败: {str(e)}")
@@ -380,7 +475,7 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
 st.divider()
 
 # 快速帮助
-with st.expander("❓ 如何使用"):
+with st.expander("如何使用"):
     st.markdown("""
     ### 画板操作
     1. **绘画**: 用鼠标或触摸笔在画布上绘画

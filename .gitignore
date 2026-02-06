@@ -1,0 +1,29 @@
+# 环境与密钥（勿提交）
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+*.egg-info/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 项目数据与缓存（可选，按需取消注释）
+# data/cache/
+# data/artworks/

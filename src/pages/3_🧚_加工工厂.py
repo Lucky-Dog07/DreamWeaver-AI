@@ -1,5 +1,7 @@
 import streamlit as st
 import uuid
+import os
+import base64
 from datetime import datetime
 from utils.session_manager import init_session_state
 from utils.file_handler import FileHandler
@@ -17,6 +19,51 @@ st.set_page_config(
 )
 
 init_session_state()
+
+# 添加背景图片
+script_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "图片", "背景01.png"))
+
+def get_base64_image(image_path):
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+if os.path.exists(bg_img_path):
+    bg_base64 = get_base64_image(bg_img_path)
+    bg_css = f"""
+    .stApp {{
+        background-image: url("data:image/png;base64,{bg_base64}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    .main .block-container {{
+        background-color: rgba(255, 255, 255, 0.85);
+        border-radius: 16px;
+        padding: 2rem;
+    }}
+    """
+else:
+    bg_css = ""
+
+# 按钮蓝色样式
+button_css = """
+    .stButton > button {
+        background-color: #4A90E2;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+    }
+    .stButton > button:hover {
+        background-color: #357ABD;
+        color: white;
+    }
+"""
+
+st.markdown(f"<style>{bg_css}{button_css}</style>", unsafe_allow_html=True)
 
 # 初始化服务
 @st.cache_resource
@@ -47,7 +94,7 @@ with tab1:
     )
 
     if uploaded_file:
-        st.image(uploaded_file, caption="预览", use_column_width=True)
+        st.image(uploaded_file, caption="预览", use_container_width=True)
 
         # 上传后的操作
         col1, col2, col3 = st.columns(3)
@@ -197,7 +244,7 @@ with tab2:
         col1, col2 = st.columns([2, 1])
 
         with col1:
-            st.image(music_file, use_column_width=True)
+            st.image(music_file, use_container_width=True)
 
         with col2:
             st.markdown("### 音乐风格选择")
@@ -260,7 +307,7 @@ with tab3:
         col1, col2 = st.columns([2, 1])
 
         with col1:
-            st.image(video_file, use_column_width=True)
+            st.image(video_file, use_container_width=True)
 
         with col2:
             st.markdown("### 视频设置")
@@ -333,7 +380,7 @@ with st.expander("📚 我的作品库"):
         cols = st.columns(3)
         for idx, artwork_path in enumerate(user_artworks[:9]):
             with cols[idx % 3]:
-                st.image(str(artwork_path), use_column_width=True)
+                st.image(str(artwork_path), use_container_width=True)
                 st.caption(artwork_path.stem)
     else:
         st.info("还没有保存任何作品。")
