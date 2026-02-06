@@ -1,7 +1,7 @@
 import streamlit as st
 import uuid
-import requests
-import json
+import os
+import base64
 from datetime import datetime
 from utils.session_manager import init_session_state
 from utils.file_handler import FileHandler
@@ -19,6 +19,51 @@ st.set_page_config(
 )
 
 init_session_state()
+
+# 添加背景图片
+script_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "图片", "背景01.png"))
+
+def get_base64_image(image_path):
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+if os.path.exists(bg_img_path):
+    bg_base64 = get_base64_image(bg_img_path)
+    bg_css = f"""
+    .stApp {{
+        background-image: url("data:image/png;base64,{bg_base64}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    .main .block-container {{
+        background-color: rgba(255, 255, 255, 0.85);
+        border-radius: 16px;
+        padding: 2rem;
+    }}
+    """
+else:
+    bg_css = ""
+
+# 按钮蓝色样式
+button_css = """
+    .stButton > button {
+        background-color: #4A90E2;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+    }
+    .stButton > button:hover {
+        background-color: #357ABD;
+        color: white;
+    }
+"""
+
+st.markdown(f"<style>{bg_css}{button_css}</style>", unsafe_allow_html=True)
 
 # 初始化服务
 @st.cache_resource
@@ -49,7 +94,7 @@ with tab1:
     )
 
     if uploaded_file:
-        st.image(uploaded_file, caption="预览", use_column_width=True)
+        st.image(uploaded_file, caption="预览", use_container_width=True)
 
         # 上传后的操作
         col1, col2, col3 = st.columns(3)
@@ -106,17 +151,6 @@ with tab1:
                             )
 
                             st.session_state.current_artwork = artwork
-                            
-                            # 保存元数据
-                            try:
-                                file_handler.save_json(
-                                    artwork.to_dict(),
-                                    st.session_state.user_id,
-                                    f"{artwork.artwork_id}.json"
-                                )
-                            except Exception as e:
-                                print(f"保存元数据失败: {e}")
-
                             st.session_state.show_analysis = True
                             
                             # 显示点评音频
@@ -146,51 +180,6 @@ with tab1:
                         result = services['coze'].generate_music_from_image(file_id)
                         if result.get('status') == 'success':
                             st.success("🎵 音乐生成成功！")
-                            
-                            # 持久化保存
-                            try:
-                                # 1. 保存图片
-                                artwork_id = str(uuid.uuid4())[:8]
-                                image_path = file_handler.save_image(
-                                    image_data,
-                                    st.session_state.user_id,
-                                    artwork_id,
-                                    subfolder="factory_music"
-                                )
-                                
-                                # 2. 保存音乐
-                                music_url = result.get('music_url')
-                                music_path = None
-                                if music_url:
-                                    music_resp = requests.get(music_url)
-                                    if music_resp.status_code == 200:
-                                        music_path = file_handler.save_audio(
-                                            music_resp.content,
-                                            st.session_state.user_id,
-                                            artwork_id,
-                                            audio_type="music"
-                                        )
-                                
-                                # 3. 保存元数据
-                                artwork = Artwork(
-                                    artwork_id=artwork_id,
-                                    user_id=st.session_state.user_id,
-                                    image_path=image_path,
-                                    music_url=music_url,
-                                    music_path=music_path,
-                                    theme_analysis={'title': '音乐创作'},
-                                    emotional_analysis={'primary_emotions': [result.get('emotion', '未知')]}
-                                )
-                                file_handler.save_json(
-                                    artwork.to_dict(),
-                                    st.session_state.user_id,
-                                    f"{artwork_id}.json"
-                                )
-                                st.toast("✅ 作品已自动保存到画廊")
-                                
-                            except Exception as e:
-                                print(f"保存失败: {e}")
-
                             if result.get('emotion'):
                                 st.info(f"🎨 **画作情感分析**：{result['emotion']}")
                             if result.get('music_url'):
@@ -223,50 +212,6 @@ with tab1:
                         
                         if video_result.get('status') == 'success':
                             st.success("✨ 视频生成完成！")
-                            
-                            # 持久化保存
-                            try:
-                                # 1. 保存图片
-                                artwork_id = str(uuid.uuid4())[:8]
-                                image_path = file_handler.save_image(
-                                    image_data,
-                                    st.session_state.user_id,
-                                    artwork_id,
-                                    subfolder="factory_video"
-                                )
-                                
-                                # 2. 保存视频
-                                video_url = video_result.get('video_url')
-                                video_path = None
-                                if video_url:
-                                    video_resp = requests.get(video_url)
-                                    if video_resp.status_code == 200:
-                                        video_path = file_handler.save_video(
-                                            video_resp.content,
-                                            st.session_state.user_id,
-                                            artwork_id,
-                                            video_type="magic"
-                                        )
-                                
-                                # 3. 保存元数据
-                                artwork = Artwork(
-                                    artwork_id=artwork_id,
-                                    user_id=st.session_state.user_id,
-                                    image_path=image_path,
-                                    video_url=video_url,
-                                    video_path=video_path,
-                                    theme_analysis={'title': '视频创作'}
-                                )
-                                file_handler.save_json(
-                                    artwork.to_dict(),
-                                    st.session_state.user_id,
-                                    f"{artwork_id}.json"
-                                )
-                                st.toast("✅ 作品已自动保存到画廊")
-                                
-                            except Exception as e:
-                                print(f"保存失败: {e}")
-
                             if video_result.get('video_url'):
                                 st.video(video_result['video_url'])
                         else:
@@ -299,7 +244,7 @@ with tab2:
         col1, col2 = st.columns([2, 1])
 
         with col1:
-            st.image(music_file, use_column_width=True)
+            st.image(music_file, use_container_width=True)
 
         with col2:
             st.markdown("### 音乐风格选择")
@@ -319,50 +264,6 @@ with tab2:
                             result = services['coze'].generate_music_from_image(file_id)
                             if result.get('status') == 'success':
                                 st.success("✨ 音乐生成成功！")
-                                
-                                # 持久化保存
-                                try:
-                                    # 1. 保存图片
-                                    artwork_id = str(uuid.uuid4())[:8]
-                                    image_path = file_handler.save_image(
-                                        image_data,
-                                        st.session_state.user_id,
-                                        artwork_id,
-                                        subfolder="factory_music_engine"
-                                    )
-                                    
-                                    # 2. 保存音乐
-                                    music_url = result.get('music_url')
-                                    music_path = None
-                                    if music_url:
-                                        music_resp = requests.get(music_url)
-                                        if music_resp.status_code == 200:
-                                            music_path = file_handler.save_audio(
-                                                music_resp.content,
-                                                st.session_state.user_id,
-                                                artwork_id,
-                                                audio_type="music"
-                                            )
-                                    
-                                    # 3. 保存元数据
-                                    artwork = Artwork(
-                                        artwork_id=artwork_id,
-                                        user_id=st.session_state.user_id,
-                                        image_path=image_path,
-                                        music_url=music_url,
-                                        music_path=music_path,
-                                        theme_analysis={'title': '音乐工坊创作'},
-                                        emotional_analysis={'primary_emotions': [result.get('emotion', '未知')]}
-                                    )
-                                    file_handler.save_json(
-                                        artwork.to_dict(),
-                                        st.session_state.user_id,
-                                        f"{artwork_id}.json"
-                                    )
-                                    st.toast("✅ 作品已自动保存到画廊")
-                                except Exception as e:
-                                    print(f"保存失败: {e}")
-
                                 if result.get('emotion'):
                                     st.info(f"🎨 **画作情感分析**：{result['emotion']}")
                                 if result.get('music_url'):
@@ -406,7 +307,7 @@ with tab3:
         col1, col2 = st.columns([2, 1])
 
         with col1:
-            st.image(video_file, use_column_width=True)
+            st.image(video_file, use_container_width=True)
 
         with col2:
             st.markdown("### 视频设置")
@@ -447,49 +348,6 @@ with tab3:
                             
                             if video_result.get('status') == 'success':
                                 st.success("✨ 视频生成完成！")
-                                
-                                # 持久化保存
-                                try:
-                                    # 1. 保存图片
-                                    artwork_id = str(uuid.uuid4())[:8]
-                                    image_path = file_handler.save_image(
-                                        image_data,
-                                        st.session_state.user_id,
-                                        artwork_id,
-                                        subfolder="factory_video_engine"
-                                    )
-                                    
-                                    # 2. 保存视频
-                                    video_url = video_result.get('video_url')
-                                    video_path = None
-                                    if video_url:
-                                        video_resp = requests.get(video_url)
-                                        if video_resp.status_code == 200:
-                                            video_path = file_handler.save_video(
-                                                video_resp.content,
-                                                st.session_state.user_id,
-                                                artwork_id,
-                                                video_type="magic"
-                                            )
-                                    
-                                    # 3. 保存元数据
-                                    artwork = Artwork(
-                                        artwork_id=artwork_id,
-                                        user_id=st.session_state.user_id,
-                                        image_path=image_path,
-                                        video_url=video_url,
-                                        video_path=video_path,
-                                        theme_analysis={'title': '视频工坊创作'}
-                                    )
-                                    file_handler.save_json(
-                                        artwork.to_dict(),
-                                        st.session_state.user_id,
-                                        f"{artwork_id}.json"
-                                    )
-                                    st.toast("✅ 作品已自动保存到画廊")
-                                except Exception as e:
-                                    print(f"保存失败: {e}")
-
                                 if video_result.get('video_url'):
                                     st.video(video_result['video_url'])
 
@@ -522,7 +380,7 @@ with st.expander("📚 我的作品库"):
         cols = st.columns(3)
         for idx, artwork_path in enumerate(user_artworks[:9]):
             with cols[idx % 3]:
-                st.image(str(artwork_path), use_column_width=True)
+                st.image(str(artwork_path), use_container_width=True)
                 st.caption(artwork_path.stem)
     else:
         st.info("还没有保存任何作品。")

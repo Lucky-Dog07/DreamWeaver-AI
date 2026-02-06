@@ -10,8 +10,9 @@ class CozeService:
 
     def __init__(self):
         config = ConfigLoader.get_coze_config()
-        self.api_token = config.get("api_token")
-        self.bot_id = config.get("bot_id")
+        self.api_token = config.get("api_token") or ""
+        self.api_token = self.api_token.strip() if isinstance(self.api_token, str) else ""
+        self.bot_id = config.get("bot_id") or ""
         self.music_workflow_id = config.get("workflow_id", "7601786439168229386")
         self.comment_workflow_id = config.get("comment_workflow_id", "7601786024813445158")
         self.video_workflow_id = config.get("video_workflow_id", "7602166946105556998")
@@ -20,7 +21,13 @@ class CozeService:
             "Authorization": f"Bearer {self.api_token}",
             "Content-Type": "application/json"
         }
-        self.coze = Coze(auth=TokenAuth(self.api_token), base_url=COZE_CN_BASE_URL)
+        # 未配置 Token 时不创建 Coze 客户端，相关功能会提示“请配置 COZE_API_TOKEN”
+        self.coze = None
+        if self.api_token:
+            self.coze = Coze(auth=TokenAuth(self.api_token), base_url=COZE_CN_BASE_URL)
+
+    def _not_configured_result(self, feature: str) -> Dict[str, Any]:
+        return {"status": "failed", "error": f"请先在 .env 中配置 COZE_API_TOKEN 和 COZE_BOT_ID 后再使用{feature}"}
 
     def generate_music_from_image(self, image_file_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -32,6 +39,8 @@ class CozeService:
         Returns:
             包含music_url和其他信息的字典
         """
+        if not self.coze:
+            return self._not_configured_result("音乐生成")
         try:
             workflow_input = {
                 "img": {"file_id": image_file_id}
@@ -72,6 +81,8 @@ class CozeService:
         Returns:
             包含点评文案和音频链接的字典
         """
+        if not self.coze:
+            return self._not_configured_result("点评")
         try:
             workflow_input = {
                 "img": {"file_id": image_file_id}
@@ -111,6 +122,8 @@ class CozeService:
         Returns:
             包含video_url的字典
         """
+        if not self.coze:
+            return self._not_configured_result("视频生成")
         try:
             workflow_input = {
                 "img": {"file_id": image_file_id}
@@ -150,9 +163,11 @@ class CozeService:
         Returns:
             文件ID
         """
+        if not self.coze:
+            return None
         try:
             from io import BytesIO
-            
+
             file = self.coze.files.upload(file=BytesIO(image_bytes))
             return file.id
 
@@ -171,6 +186,8 @@ class CozeService:
         Returns:
             工作流执行结果
         """
+        if not self.coze:
+            return {"status": "failed", "error": "请配置 COZE_API_TOKEN"}
         try:
             result = {
                 "status": "pending",
@@ -232,6 +249,8 @@ class CozeService:
         Returns:
             工作流执行结果
         """
+        if not self.coze:
+            return None
         try:
             url = f"{self.base_url}/workflows/run"
 

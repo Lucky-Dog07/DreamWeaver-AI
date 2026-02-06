@@ -2,7 +2,6 @@ import streamlit as st
 import json
 import time
 import uuid
-import requests
 from datetime import datetime
 from PIL import Image
 import io
@@ -27,7 +26,58 @@ st.set_page_config(
 
 init_session_state()
 
+# 添加背景图片
+import os
+script_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "图片", "背景01.png"))
+
+def get_base64_image(image_path):
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+if os.path.exists(bg_img_path):
+    bg_base64 = get_base64_image(bg_img_path)
+    bg_css = f"""
+    .stApp {{
+        background-image: url("data:image/png;base64,{bg_base64}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    .main .block-container {{
+        background-color: rgba(255, 255, 255, 0.85);
+        border-radius: 16px;
+        padding: 2rem;
+    }}
+    """
+else:
+    bg_css = ""
+
+# 按钮蓝色样式
+button_css = """
+    .stButton > button {
+        background-color: #4A90E2;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+    }
+    .stButton > button:hover {
+        background-color: #357ABD;
+        color: white;
+    }
+    .stButton > button:active {
+        background-color: #2E6BA6;
+        color: white;
+    }
+"""
+
+st.markdown(f"<style>{bg_css}{button_css}</style>", unsafe_allow_html=True)
+
 # 初始化服务
+@st.cache_resource
 def get_services():
     return {
         'multimodal': MultimodalService(),
@@ -38,18 +88,16 @@ def get_services():
 services = get_services()
 file_handler = FileHandler()
 
-st.markdown("# 🎨 智能画板")
+st.markdown("# 智能画板")
 st.markdown("*在画板上自由绘画，小精灵球球会实时陪伴与反馈*")
 
-# 初始化触发计数器和互动历史
+# 初始化触发计数器
 if 'last_trigger_count' not in st.session_state:
     st.session_state.last_trigger_count = 0
-if 'interaction_history' not in st.session_state:
-    st.session_state.interaction_history = []
 
 # 侧边栏设置
 with st.sidebar:
-    st.markdown("## 🎨 画笔设置")
+    st.markdown("## 画笔设置")
 
     # 笔刷设置
     stroke_color = st.color_picker(
@@ -62,13 +110,13 @@ with st.sidebar:
     stroke_width = st.slider(
         "笔刷粗细",
         min_value=1,
-        max_value=40,
+        max_value=20,
         value=st.session_state.drawing_data.get('stroke_width', 5),
         key="stroke_width"
     )
     st.session_state.drawing_data['stroke_width'] = stroke_width
 
-    st.markdown("### 🖼️ 背景设置")
+    st.markdown("### 背景设置")
     bg_color = st.color_picker(
         "背景颜色",
         value=st.session_state.drawing_data.get('background_color', '#FFFFFF'),
@@ -77,32 +125,34 @@ with st.sidebar:
     st.session_state.drawing_data['background_color'] = bg_color
 
     st.divider()
-    st.markdown("### 🛠️ 工具")
+    st.markdown("### 工具")
     st.info("💡 撤销/重做/清空功能已集成在画板左侧工具栏中")
 
     st.divider()
 
-    # 统计信息占位符
-    st.markdown("### 📊 统计")
-    stats_placeholder = st.empty()
-    
-    # 默认显示
-    with stats_placeholder.container():
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("笔画数", 0)
-        with col2:
-            st.metric("互动次数", 0)
+    # 统计信息
+    st.markdown("### 统计")
+    current_strokes = 0
+    if 'canvas_result' in st.session_state and st.session_state.canvas_result and st.session_state.canvas_result.json_data:
+         if "objects" in st.session_state.canvas_result.json_data:
+            current_strokes = len(st.session_state.canvas_result.json_data["objects"])
+            
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("笔画数", current_strokes)
+    with col2:
+        # 这里的修改次数在使用st_canvas时较难精确统计，暂用触发次数代替或其他
+        st.metric("互动次数", st.session_state.last_trigger_count // 8)
 
-# 创建画板和互动区域
+# 创建画板
 st.markdown("## 画布区域")
 
-# 使用两栏布局
-canvas_col, feedback_col = st.columns([3, 1])
-
 # 计算画布参数
-canvas_width = 750 # 略微减小宽度以适应双栏
-canvas_height = 550
+canvas_width = 800
+canvas_height = 600
+
+# 使用两列布局：左边画板，右边小精灵
+canvas_col, spirit_col = st.columns([1, 1])
 
 with canvas_col:
     # 使用 streamlit-drawable-canvas
@@ -120,106 +170,56 @@ with canvas_col:
         display_toolbar=True,
     )
 
-with feedback_col:
-    st.markdown("### 🧚 球球的反馈")
-    feedback_container = st.container(height=canvas_height - 50)
-    with feedback_container:
-        if not st.session_state.interaction_history:
-            st.write("还没有互动哦，快画几笔吧！")
-        
-        # 获取最新的一条互动
-        history = st.session_state.interaction_history
-        for i, chat in enumerate(reversed(history)):
-            with st.chat_message("assistant", avatar="🧚"):
-                st.write(chat['text'])
-                if chat.get('audio'):
-                    # 只有最新的一条反馈且未播放过才自动播放
-                    autoplay = (i == 0 and not chat.get('played', False))
-                    st.audio(chat['audio'], format='audio/wav', autoplay=autoplay)
-                    if autoplay:
-                        chat['played'] = True
+with spirit_col:
+    # 显示小精灵图片
+    spirit_img_path = os.path.normpath(os.path.join(script_dir, "..", "图片", "小精灵3.png"))
+    if os.path.exists(spirit_img_path):
+        st.image(spirit_img_path, use_container_width=True)
+    else:
+        st.info("小精灵球球在这里陪你画画~")
 
 # 实时处理逻辑
 if canvas_result.json_data is not None:
     objects = canvas_result.json_data["objects"]
     current_count = len(objects)
     
-    # 更新侧边栏统计（在画布渲染后更新）
-    with stats_placeholder.container():
-        c1, c2 = st.columns(2)
-        with c1:
-            st.metric("笔画数", current_count)
-        with c2:
-            st.metric("互动次数", st.session_state.last_trigger_count // 8)
-    
-    # 如果画布被清空，重置触发计数
-    if current_count == 0 and st.session_state.last_trigger_count > 0:
-        st.session_state.last_trigger_count = 0
-        st.session_state.interaction_history = []
-        st.rerun()
-    
     # 更新session state中的笔画数据（简化存储）
     st.session_state.drawing_data['strokes'] = objects
     
     # 逻辑：每8笔触发一次语音互动
-    # 修复：使用更稳健的触发逻辑，防止快速绘画时跳过
-    trigger_threshold = 8
-    if current_count >= st.session_state.last_trigger_count + trigger_threshold:
-        # 获取图像数据并转换为字节
-        if canvas_result.image_data is not None:
+    if current_count > 0 and current_count >= st.session_state.last_trigger_count + 8:
+        st.session_state.last_trigger_count = current_count
+        
+        with st.spinner("球球正在看你的画..."):
             try:
-                # 将 numpy 数组转换为 PNG 字节流
-                import numpy as np
-                from PIL import Image
-                import io
-                
-                img_data = canvas_result.image_data.astype(np.uint8)
-                img = Image.fromarray(img_data)
-                buffered = io.BytesIO()
-                img.save(buffered, format="PNG")
-                image_bytes = buffered.getvalue()
-                
-                with st.spinner("🧚 球球正在看你的画..."):
-                    # 只有在成功获取反馈后才更新 last_trigger_count
+                # 获取图片数据
+                if canvas_result.image_data is not None:
+                    img_data = canvas_result.image_data.astype(np.uint8)
+                    img = Image.fromarray(img_data)
+                    
+                    # 转为bytes
+                    img_bytes = io.BytesIO()
+                    img.save(img_bytes, format='PNG')
+                    image_bytes = img_bytes.getvalue()
+                    
+                    # 准备绘画信息
                     drawing_info = {
-                        "stroke_count": current_count,
-                        "timestamp": "realtime"
+                        'duration': 0, # 暂未实现精确计时
+                        'stroke_count': current_count,
+                        'revision_count': 0
                     }
                     
-                    # 准备对话上下文
-                    history = []
-                    # 取最近3轮对话作为上下文，避免上下文过长
-                    for chat in st.session_state.interaction_history[-3:]:
-                        if chat.get('prompt'):
-                            history.append({"role": "user", "content": chat['prompt']})
-                        history.append({"role": "assistant", "content": chat['text']})
-                    
                     # 生成反馈
-                    feedback_data = services['multimodal'].generate_spirit_feedback(
-                        image_bytes, 
-                        drawing_info,
-                        history=history
-                    )
+                    feedback = services['multimodal'].generate_spirit_feedback(image_bytes, drawing_info)
                     
-                    # 兼容性处理
-                    if isinstance(feedback_data, str):
-                        feedback_text = feedback_data
-                        feedback_audio = None
-                    else:
-                        feedback_text = feedback_data.get('text', '')
-                        feedback_audio = feedback_data.get('audio')
+                    # 生成语音
+                    voice_audio = services['voice'].text_to_speech(feedback)
                     
-                    # 更新状态
-                    if feedback_text:
-                        st.session_state.last_trigger_count = current_count
-                        st.session_state.interaction_history.append({
-                            "prompt": services['multimodal']._build_spirit_feedback_prompt(drawing_info),
-                            "text": feedback_text,
-                            "audio": feedback_audio,
-                            "played": False # 新增播放状态标记
-                        })
-                        st.toast(f"🧚 球球说：{feedback_text}")
-                        st.rerun()
+                    # 播放语音
+                    if voice_audio:
+                        st.audio(voice_audio, format='audio/wav', autoplay=True)
+                    
+                    st.toast(f"球球说：{feedback}")
                     
             except Exception as e:
                 st.error(f"互动出错: {str(e)}")
@@ -237,27 +237,60 @@ st.divider()
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("📸 截图预览", use_container_width=True):
+    if st.button("截图预览", use_container_width=True):
         if canvas_result.image_data is not None:
              st.image(canvas_result.image_data, caption="当前画布预览")
 
 with col2:
-    if st.button("🎵 查看之前作品", use_container_width=True):
+    if st.button("生成音乐", use_container_width=True):
         if not canvas_result.json_data or not canvas_result.json_data["objects"]:
             st.error("请先在画板上绘画！")
         else:
             st.session_state.generate_music = True
 
 with col3:
-    if st.button("✅ 完成作品", use_container_width=True):
+    if st.button("完成作品", use_container_width=True):
         if not canvas_result.json_data or not canvas_result.json_data["objects"]:
             st.error("请先在画板上绘画！")
         else:
             st.session_state.finish_artwork = True
 
+# 处理生成音乐
+if st.session_state.get('generate_music'):
+    with st.spinner("🎵 正在为你的画生成音乐..."):
+        try:
+            if canvas_result.image_data is not None:
+                # 获取图片数据
+                img_data = canvas_result.image_data.astype(np.uint8)
+                img = Image.fromarray(img_data)
+                
+                img_bytes = io.BytesIO()
+                img.save(img_bytes, format='PNG')
+                image_data = img_bytes.getvalue()
+                
+                # 上传到Coze
+                file_id = services['coze'].upload_image_to_coze(image_data)
+                
+                if file_id:
+                    result = services['coze'].generate_music_from_image(file_id)
+                    if result.get('status') == 'success':
+                        music_url = result.get('music_url')
+                        st.success("🎵 音乐生成成功！")
+                        if music_url:
+                            st.audio(music_url)
+                    else:
+                        st.error(f"音乐生成失败: {result.get('error')}")
+                else:
+                    st.error("图片上传失败")
+            else:
+                st.error("请先在画板上绘画！")
+        except Exception as e:
+            st.error(f"生成音乐出错: {str(e)}")
+        st.session_state.generate_music = False
+
 # 处理完成作品
 if st.session_state.get('finish_artwork'):
-    with st.spinner("🤖 正在进行深度分析..."):
+    with st.spinner("正在进行深度分析..."):
         try:
             if canvas_result.image_data is not None:
                 # 获取图片
@@ -277,7 +310,7 @@ if st.session_state.get('finish_artwork'):
                 )
                 
                 # 1. 使用 ImageProcessor 进行视觉分析 (用户要求)
-                st.write("🔍 正在进行视觉计算...")
+                st.write("正在进行视觉计算...")
                 dominant_colors = ImageProcessor.extract_dominant_colors(image_data)
                 balance_score = ImageProcessor.calculate_balance_score(image_data)
                 focus_point = ImageProcessor.detect_focus_point(image_data)
@@ -299,9 +332,8 @@ if st.session_state.get('finish_artwork'):
                 analysis = services['multimodal'].analyze_drawing(image_data, drawing_info)
                 
                 # 3. 生成小精灵最终点评
-                spirit_feedback_data = services['multimodal'].generate_spirit_feedback(image_data, drawing_info)
-                spirit_text = spirit_feedback_data.get('text', '')
-                spirit_audio = spirit_feedback_data.get('audio')
+                spirit_feedback = services['multimodal'].generate_spirit_feedback(image_data, drawing_info)
+                voice_audio = services['voice'].text_to_speech(spirit_feedback)
                 
                 # 保存作品数据
                 artwork = Artwork(
@@ -317,11 +349,8 @@ if st.session_state.get('finish_artwork'):
                     composition_analysis=analysis.get('composition_analysis', {}),
                     emotional_analysis=analysis.get('emotional_analysis', {}),
                     development_analysis=analysis.get('development_analysis', {}),
-                    voice_feedback=spirit_text  # 只存储文字
+                    voice_feedback=spirit_feedback
                 )
-                
-                # 将音频存入 session_state 以供显示
-                st.session_state.last_analysis_audio = spirit_audio
                 
                 # 补充视觉分析数据到 artwork (如果模型支持，这里暂存到 analysis 字段中展示)
                 artwork.color_analysis['palette'] = palette_info.get('palette', [])
@@ -330,17 +359,6 @@ if st.session_state.get('finish_artwork'):
                 # 保存到session
                 st.session_state.current_artwork = artwork
                 
-                # 自动持久化保存元数据
-                try:
-                    artwork_dict = artwork.to_dict()
-                    file_handler.save_json(
-                        artwork_dict,
-                        st.session_state.user_id,
-                        f"{artwork.artwork_id}.json"
-                    )
-                except Exception as e:
-                    print(f"自动保存元数据失败: {str(e)}")
-
                 st.success("✨ 分析完成！")
                 st.session_state.finish_artwork = False
                 st.session_state.show_analysis = True
@@ -355,22 +373,18 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
     artwork = st.session_state.current_artwork
 
     st.divider()
-    st.markdown("## 📊 AI分析结果")
+    st.markdown("## AI分析结果")
 
     # 显示作品图片
     if artwork.image_path:
-        st.image(artwork.image_path, caption="你的作品", use_column_width=True)
+        st.image(artwork.image_path, caption="你的作品", use_container_width=True)
 
     # 显示小精灵反馈
-    st.markdown("### 🧚 小精灵的话")
-    if artwork.voice_feedback:
-        st.info(artwork.voice_feedback)
+    st.markdown("### 小精灵的话")
+    st.info(artwork.voice_feedback)
 
-    # 显示音频
-    if st.session_state.get('last_analysis_audio'):
-        st.audio(st.session_state.last_analysis_audio, format='audio/wav')
-    elif artwork.voice_feedback:
-        # 如果没有缓存的音频（比如是从历史记录加载的），则调用 TTS
+    # 显示语音
+    if artwork.voice_feedback:
         try:
             voice_audio = services['voice'].text_to_speech(artwork.voice_feedback)
             if voice_audio:
@@ -378,18 +392,8 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
         except:
             pass
 
-    # 显示生成的视频
-    if artwork.video_url:
-        st.markdown("### 🎬 魔法视频")
-        st.video(artwork.video_url)
-
-    # 显示生成的音乐
-    if artwork.music_url:
-        st.markdown("### 🎵 背景音乐")
-        st.audio(artwork.music_url)
-
     # 显示分析详情
-    with st.expander("📈 详细分析", expanded=True):
+    with st.expander("详细分析", expanded=True):
         col1, col2 = st.columns(2)
 
         with col1:
@@ -418,20 +422,20 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("🎵 生成音乐", use_container_width=True, key="btn_music_analysis"):
+        if st.button("生成音乐", use_container_width=True, key="btn_music_analysis"):
             st.session_state.generate_music_for_artwork = True
 
     with col2:
-        if st.button("🎬 生成视频", use_container_width=True):
+        if st.button("生成视频", use_container_width=True):
             st.session_state.generate_video = True
 
     with col3:
-        if st.button("💾 保存作品", use_container_width=True):
+        if st.button("保存作品", use_container_width=True):
             st.session_state.save_artwork = True
 
     # 处理生成音乐
     if st.session_state.get('generate_music_for_artwork'):
-        with st.spinner("🎵 正在为你的画生成音乐..."):
+        with st.spinner("正在为你的画生成音乐..."):
             try:
                 # 上传到Coze
                 if artwork.image_path:
@@ -442,46 +446,8 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
                         result = services['coze'].generate_music_from_image(file_id)
                         if result.get('status') == 'success':
                             artwork.music_url = result.get('music_url')
-                            emotion = result.get('emotion')
-                            
-                            # 保存emotion到情感分析中
-                            if emotion:
-                                if not artwork.emotional_analysis:
-                                    artwork.emotional_analysis = {}
-                                artwork.emotional_analysis['primary_emotions'] = [emotion]
-                            
-                            # 自动持久化保存音乐
-                            if artwork.music_url:
-                                try:
-                                    music_response = requests.get(artwork.music_url)
-                                    if music_response.status_code == 200:
-                                        music_path = file_handler.save_audio(
-                                            music_response.content,
-                                            st.session_state.user_id,
-                                            artwork.artwork_id,
-                                            audio_type="music"
-                                        )
-                                        artwork.music_path = music_path
-                                except:
-                                    pass
-                            
-                            # 更新元数据
-                            try:
-                                file_handler.save_json(
-                                    artwork.to_dict(),
-                                    st.session_state.user_id,
-                                    f"{artwork.artwork_id}.json"
-                                )
-                            except:
-                                pass
-
                             st.session_state.current_artwork = artwork
                             st.success("🎵 音乐生成成功！")
-                            
-                            # 展示emotion文案
-                            if emotion:
-                                st.info(f"🎭 音乐情感标签：{emotion}")
-                            
                             if artwork.music_url:
                                 st.audio(artwork.music_url)
                         else:
@@ -492,57 +458,6 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
                 st.error(f"生成音乐出错: {str(e)}")
             st.session_state.generate_music_for_artwork = False
 
-    # 处理生成视频
-    if st.session_state.get('generate_video'):
-        with st.spinner("🎬 正在为你的画生成魔法视频..."):
-            try:
-                # 上传到Coze
-                if artwork.image_path:
-                    image_data = file_handler.load_image(artwork.image_path)
-                    file_id = services['coze'].upload_image_to_coze(image_data)
-
-                    if file_id:
-                        result = services['coze'].generate_video_from_image(file_id)
-                        if result.get('status') == 'success':
-                            artwork.video_url = result.get('video_url')
-                            
-                            # 自动持久化保存视频
-                            if artwork.video_url:
-                                try:
-                                    video_response = requests.get(artwork.video_url)
-                                    if video_response.status_code == 200:
-                                        video_path = file_handler.save_video(
-                                            video_response.content,
-                                            st.session_state.user_id,
-                                            artwork.artwork_id,
-                                            video_type="magic"
-                                        )
-                                        artwork.video_path = video_path
-                                except:
-                                    pass
-
-                            # 更新元数据
-                            try:
-                                file_handler.save_json(
-                                    artwork.to_dict(),
-                                    st.session_state.user_id,
-                                    f"{artwork.artwork_id}.json"
-                                )
-                            except:
-                                pass
-
-                            st.session_state.current_artwork = artwork
-                            st.success("🎬 视频生成成功！")
-                            if artwork.video_url:
-                                st.video(artwork.video_url)
-                        else:
-                            st.error(f"视频生成失败: {result.get('error')}")
-                    else:
-                        st.error("图片上传失败")
-            except Exception as e:
-                st.error(f"生成视频出错: {str(e)}")
-            st.session_state.generate_video = False
-
     # 处理保存作品
     if st.session_state.get('save_artwork'):
         try:
@@ -552,7 +467,7 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
                 st.session_state.user_id,
                 f"{artwork.artwork_id}.json"
             )
-            st.success("✅ 作品已保存！")
+            st.success("作品已保存！")
             st.session_state.save_artwork = False
         except Exception as e:
             st.error(f"保存失败: {str(e)}")
@@ -560,7 +475,7 @@ if st.session_state.get('show_analysis') and st.session_state.current_artwork:
 st.divider()
 
 # 快速帮助
-with st.expander("❓ 如何使用"):
+with st.expander("如何使用"):
     st.markdown("""
     ### 画板操作
     1. **绘画**: 用鼠标或触摸笔在画布上绘画
@@ -571,8 +486,7 @@ with st.expander("❓ 如何使用"):
     ### 作品工坊
     1. **生成音乐**: 让AI为你的画创作背景音乐
     2. **生成视频**: 让AI创建魔法视频变身效果
-    3. **保存作品**: 将作品保存到本地
-    4. **获得点评**: 小精灵会给出语音评价
+    3. **获得点评**: 小精灵会给出语音评价
 
     ### 小贴士
     - 大胆创作！没有对错之分

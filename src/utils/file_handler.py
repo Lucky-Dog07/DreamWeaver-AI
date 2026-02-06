@@ -124,42 +124,6 @@ class FileHandler:
             print(f"图片优化失败: {str(e)}")
             return image_data
 
-    def save_video(
-        self,
-        video_data: bytes,
-        user_id: str,
-        artwork_id: str,
-        video_type: str = "generated"
-    ) -> str:
-        """
-        保存视频文件
-
-        Args:
-            video_data: 视频字节数据
-            user_id: 用户ID
-            artwork_id: 作品ID
-            video_type: 视频类型
-
-        Returns:
-            保存路径
-        """
-        try:
-            user_dir = self.artworks_dir / user_id / "video"
-            user_dir.mkdir(parents=True, exist_ok=True)
-
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{artwork_id}_{video_type}_{timestamp}.mp4"
-            filepath = user_dir / filename
-
-            with open(filepath, 'wb') as f:
-                f.write(video_data)
-
-            return str(filepath)
-
-        except Exception as e:
-            print(f"视频保存失败: {str(e)}")
-            return None
-
     def save_audio(
         self,
         audio_data: bytes,
@@ -233,36 +197,37 @@ class FileHandler:
             print(f"JSON加载失败: {str(e)}")
             return None
 
-    def get_artwork_metadata(self, user_id: str, artwork_id: str) -> dict:
-        """获取作品元数据"""
-        try:
-            # 尝试查找对应的JSON文件
-            metadata_dir = self.artworks_dir / user_id / "metadata"
-            if not metadata_dir.exists():
-                return None
-            
-            # 查找以 artwork_id 开头的json文件
-            json_files = list(metadata_dir.glob(f"{artwork_id}.json"))
-            if json_files:
-                return self.load_json(str(json_files[0]))
-            return None
-        except Exception as e:
-            print(f"获取元数据失败: {str(e)}")
-            return None
-
     def get_user_artworks(self, user_id: str) -> list:
         """获取用户所有作品"""
         try:
-            user_dir = self.artworks_dir / user_id
+            user_dir = self.artworks_dir / user_id / "original"
             if not user_dir.exists():
                 return []
 
-            # 递归查找所有PNG图片
-            images = list(user_dir.rglob("*.png"))
+            images = list(user_dir.glob("*.png"))
             return sorted(images, key=lambda x: x.stat().st_mtime, reverse=True)
 
         except Exception as e:
             print(f"获取作品列表失败: {str(e)}")
+            return []
+
+    def get_all_artworks(self) -> list:
+        """获取所有用户的所有作品"""
+        try:
+            all_images = []
+            # 遍历所有用户目录
+            for user_dir in self.artworks_dir.iterdir():
+                if user_dir.is_dir():
+                    original_dir = user_dir / "original"
+                    if original_dir.exists():
+                        all_images.extend(original_dir.glob("*.png"))
+                    # 也检查 uploaded 目录
+                    uploaded_dir = user_dir / "uploaded"
+                    if uploaded_dir.exists():
+                        all_images.extend(uploaded_dir.glob("*.png"))
+            return sorted(all_images, key=lambda x: x.stat().st_mtime, reverse=True)
+        except Exception as e:
+            print(f"获取所有作品失败: {str(e)}")
             return []
 
     def delete_artwork(self, user_id: str, artwork_id: str) -> bool:
