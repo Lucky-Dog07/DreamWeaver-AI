@@ -247,7 +247,7 @@ with col1:
         st.markdown('<div class="card"></div>', unsafe_allow_html=True)
 
     if st.button("进入智能画板 →", use_container_width=True, key="btn_canvas"):
-        st.switch_page("pages/2_智能画板.py")
+        st.switch_page("pages/2_Canvas.py")
 
 with col2:
     card2_img_path = os.path.normpath(os.path.join(script_dir, "..", "assets", "背景2.png"))
@@ -264,7 +264,7 @@ with col2:
         st.markdown('<div class="card"></div>', unsafe_allow_html=True)
 
     if st.button("进入作品工坊 →", use_container_width=True, key="btn_workshop"):
-        st.switch_page("pages/3_加工工厂.py")
+        st.switch_page("pages/3_Workshop.py")
 
 st.divider()
 

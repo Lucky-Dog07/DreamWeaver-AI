@@ -218,7 +218,7 @@ with col1:
         </div>
         """, unsafe_allow_html=True)
     if st.button("开始绘画", use_container_width=True, key="home_canvas"):
-        st.switch_page("pages/2_智能画板.py")
+        st.switch_page("pages/2_Canvas.py")
 
 with col2:
     if workshop_card_base64:
@@ -239,7 +239,7 @@ with col2:
         </div>
         """, unsafe_allow_html=True)
     if st.button("开启工坊", use_container_width=True, key="home_workshop"):
-        st.switch_page("pages/3_加工工厂.py")
+        st.switch_page("pages/3_Workshop.py")
 
 st.markdown("---")
 
