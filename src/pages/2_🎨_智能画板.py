@@ -28,8 +28,9 @@ init_session_state()
 
 # 添加背景图片
 import os
-script_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "背景01.png"))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(script_dir))
+bg_img_path = os.path.join(project_root, "assets", "背景01.png")
 
 def get_base64_image(image_path):
     with open(image_path, "rb") as f:
@@ -172,7 +173,7 @@ with canvas_col:
 
 with spirit_col:
     # 显示小精灵图片
-    spirit_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "小精灵3.png"))
+    spirit_img_path = os.path.join(project_root, "assets", "小精灵3.png")
     if os.path.exists(spirit_img_path):
         st.image(spirit_img_path, use_container_width=True)
     else:

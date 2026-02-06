@@ -21,8 +21,9 @@ st.set_page_config(
 init_session_state()
 
 # 添加背景图片
-script_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-bg_img_path = os.path.normpath(os.path.join(script_dir, "..", "..", "assets", "背景01.png"))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(script_dir))
+bg_img_path = os.path.join(project_root, "assets", "背景01.png")
 
 def get_base64_image(image_path):
     with open(image_path, "rb") as f:
